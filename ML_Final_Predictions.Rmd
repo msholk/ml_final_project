@@ -1,0 +1,273 @@
+---
+title: "Predictions using the Weight Lifting Exercises Dataset"
+autor: "M.Welt"
+output: html_document
+date: "2025-02-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Executive Summary
+Based on a dataset provide by HAR <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har> we will try to train a predictive model to predict what mistake was comitted during exercise.
+
+We’ll take the following steps:
+
+ - Process the data, for use of this project
+ - Explore the data, try to reduce features
+ - Train model
+ - Predict exercise error on test dataset
+ 
+---
+
+```{r installing, echo=FALSE}
+if (!requireNamespace("caret", quietly = TRUE)) {
+    install.packages("caret")
+}
+if (!requireNamespace("randomForest", quietly = TRUE)) {
+    install.packages("randomForest")
+}
+if (!requireNamespace("doParallel", quietly = TRUE)) {
+    install.packages("doParallel")
+}
+if (!requireNamespace("formattable", quietly = TRUE)) {
+    install.packages("formattable")
+}
+if (!requireNamespace("caretEnsemble", quietly = TRUE)) {
+    install.packages("caretEnsemble")
+}
+if (!requireNamespace("xgboost", quietly = TRUE)) {
+    install.packages("xgboost")
+}
+if (!requireNamespace("gbm", quietly = TRUE)) {
+    install.packages("gbm")
+}
+if (!requireNamespace("ranger", quietly = TRUE)) {
+    install.packages("ranger")
+}
+if (!requireNamespace("glmnet", quietly = TRUE)) {
+    install.packages("glmnet")
+}
+```
+
+```{r libraries, message=FALSE}
+
+library(caret)    # For machine learning workflow
+library(randomForest)  # For Random Forest model
+library(ggplot2)  # For visualization
+library(corrplot) # For correlation analysis
+library(dplyr)    # For data manipulation
+library(doParallel)
+library(formattable)
+library(caretEnsemble)
+library(xgboost)
+library(gbm)
+library(ranger)
+library(glmnet)
+
+set.seed(123)  # Ensure reproducibility
+```
+
+## Acquire the datasets.
+
+Download files if they are not yet on the system.
+
+```{r donwloading, echo=TRUE,message=TRUE}
+downloadFile <- function(fileName) {
+  destfile <- paste0("pml-",fileName, ".csv")
+  if (!file.exists(destfile)) {
+    download.file(
+      paste0("https://d396qusza40orc.cloudfront.net/predmachlearn/", fileName, ".csv"),
+      destfile = destfile,
+      mode = "wb"
+    )
+  }
+}
+downloadFile("training")
+downloadFile("testing")
+```
+
+## Cleaning data
+
+We will remove columns that are either empty or unsuitable for making predictions.
+
+```{r cleaning_data }
+cleanData <- function(fileName) {
+  rawdata <- read.csv(paste0("pml-",fileName,".csv"))
+
+ 
+  # Remove reduntant columns
+    # Identifiers & Timestamps:
+      #Remove columns that are time-based, likely irrelevant
+      rawdata <- rawdata[,-c(grep("timestamp", names(rawdata)))]
+      # "X" (index column)
+      # "user_name" (not useful for prediction)
+      rawdata <- rawdata[, !(names(rawdata) %in% c("X","user_name"))]
+      #"new_window" and "num_window" (used for session tracking)
+      rawdata <- rawdata[, !(names(rawdata) %in% c("new_window","num_window"))]
+      
+    # Remove columns where many values are NA
+      # Define the threshold (90% missing values)
+      threshold <- 0.9 * nrow(rawdata)
+      rawdata <- rawdata[, colSums(is.na(rawdata) | rawdata == "") < threshold]
+  #Set factor to "classe"    
+  rawdata$classe <- as.factor(rawdata$classe)
+  return(rawdata)
+}  
+cleaned_data <- cleanData("training")
+```  
+We have only `r ncol(cleaned_data)-1` features left.
+
+## Split into Training and Validation sets
+```{r splitting} 
+trainIndex <- createDataPartition(cleaned_data$classe, p = 0.7, list = FALSE)
+traindata <- cleaned_data[trainIndex, ]
+validation_data <- cleaned_data[-trainIndex, ]
+```   
+
+
+#### Check missing values
+```{r check_missing_values, message=FALSE}
+
+missing_values_count <- sum(is.na(traindata))
+
+```
+We have `r missing_values_count` missing values.
+
+#### Check near zero values
+```{r near_zero_values, message=FALSE}
+nzv_vars <- nearZeroVar(traindata, saveMetrics = TRUE)
+count_nzv <- sum(nzv_vars$nzv == TRUE)
+
+```
+We have `r count_nzv` near zero values.
+
+#### Remove Highly Correlated Features
+Highly correlated features can lead to redundancy.
+```{r remove_correlated, message=FALSE}
+
+cor_matrix <- cor(traindata %>% select(-classe))  # Remove target variable
+high_cor <- findCorrelation(cor_matrix, cutoff = 0.9)  # Identify high-correlation features
+# traindata <- traindata[, -high_cor]
+
+#Plot the correlation matrix
+cor_matrix[abs(cor_matrix) < 0.6] <- NA  # Remove correlations < 0.5
+cor_matrix[is.na(cor_matrix)] <- 0  # Replace NA with 0
+
+corrplot(cor_matrix, method = "circle", type = "upper", 
+         tl.cex = 0.7, tl.col = "black", 
+         addCoef.col = NULL)  
+
+traindata <- traindata[, -high_cor]
+
+```
+We have `r length(names(traindata))` columns left.
+
+#### Parallel processing & Caching
+Some processes are really time consuming, so let's prepare parallel processing
+````{r parallel_functions}
+# Corrected global cluster variable
+parallelCluster <- NULL
+
+# Function to stop the parallel cluster
+stopParallelCluster <- function() {
+  if (!is.null(parallelCluster)) {
+    stopCluster(parallelCluster)  # Stop the parallel cluster
+    registerDoSEQ()  # Reset to sequential execution
+    parallelCluster <<- NULL  # Clear the global cluster variable
+  }
+}
+
+# Function to prepare the parallel cluster
+prepareParallelCluster <- function() {
+  # Detect the number of available cores and use one less
+  num_cores <- max(detectCores() - 1, 1)  # Ensure at least 1 core
+  
+  # Create and register the cluster globally
+  parallelCluster <<- makeCluster(num_cores)
+  registerDoParallel(parallelCluster)
+}
+
+# Function to load saved R objects from a .RData file if the file exists
+loadObjects <- function(fileName) {
+  # Append ".RData" extension to the filename
+  fileName <- paste0(fileName, ".RData")
+  
+  # Check if the file exists before attempting to load
+  if (file.exists(fileName)) {
+    # Load objects into the global environment
+    load(fileName, envir = .GlobalEnv)
+  }
+}
+````
+
+#### Train Multiple Base Models
+Define a train_control object with cross-validation and set up your base models.
+
+````{r train_models}
+MODEL_LIST_FILE <- "model_list"
+loadObjects(MODEL_LIST_FILE)
+if (!exists("model_list") || is.null(model_list)) {
+  start_time <- proc.time()
+  prepareParallelCluster()
+  # Define training control with 5-fold cross-validation
+  train_control <- trainControl(
+    method = "cv",
+    number = 5,
+    savePredictions = "final",
+    allowParallel = TRUE
+  )
+
+  # List of base models
+  model_list <- caretList(
+    classe ~ .,  # Predicting Exercise Error
+    data = traindata,
+    trControl = train_control,
+    methodList = c("ranger", "glmnet", "xgbTree")
+  )
+  
+  stopParallelCluster()
+  execution_time <- proc.time() - start_time
+  save(model_list, execution_time, file = paste0(MODEL_LIST_FILE,".RData"))
+} 
+print(paste("Elapsed time:", round((execution_time["elapsed"] / 60), 2), "minutes"))
+````
+Explanation of the models:
+
+- rf: Random Forest (good for non-linear data)
+- gbm: Gradient Boosting Machine (great for medium datasets)
+- xgbTree: XGBoost (optimized GBM)
+- lm: Linear Regression (baseline model)
+
+### Building the Stacked Model
+Combine the base models using a meta-model (e.g., glm):
+````{r}
+STACK_MODEL_FILE <- "stacked_model"
+loadObjects(STACK_MODEL_FILE)
+if (!exists("stacked_model") || is.null(stacked_model)) {
+  start_time <- proc.time()
+
+  prepareParallelCluster()
+
+  # Stack the models using a generalized linear model (GLM) as meta-learner
+  stacked_model <- caretStack(
+    model_list,
+    method = "xgbTree",
+    metric = "Accuracy",
+    trControl = trainControl(
+      method = "cv",
+      number = 5,
+      savePredictions = "final",
+      classProbs = TRUE,  # Enable class probabilities for classification
+      allowParallel = FALSE,
+      sampling = "up"  # Upsample minority classes to avoid empty folds
+    )
+  )
+  stopParallelCluster()
+  execution_time <- proc.time() - start_time
+  save(stacked_model, execution_time, file = paste0(STACK_MODEL_FILE,".RData"))
+} 
+print(paste("Elapsed time:", round((execution_time["elapsed"] / 60), 2), "minutes"))
+````
+
