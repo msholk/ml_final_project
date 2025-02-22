@@ -10,16 +10,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Executive Summary
+
 Based on a dataset provide by HAR <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har> we will try to train a predictive model to predict what mistake was comitted during exercise.
 
 We’ll take the following steps:
 
- - Process the data, for use of this project
- - Explore the data, try to reduce features
- - Train model
- - Predict exercise error on test dataset
- 
----
+-   Process the data, for use of this project
+-   Explore the data, try to reduce features
+-   Train model
+-   Predict exercise error on test dataset
+
+------------------------------------------------------------------------
 
 ```{r installing, echo=FALSE}
 if (!requireNamespace("caret", quietly = TRUE)) {
@@ -116,38 +117,37 @@ cleanData <- function(fileName) {
   return(rawdata)
 }  
 cleaned_data <- cleanData("training")
-```  
+```
+
 We have only `r ncol(cleaned_data)-1` features left.
 
-## Split into Training and Validation sets
-```{r splitting} 
-trainIndex <- createDataPartition(cleaned_data$classe, p = 0.7, list = FALSE)
-traindata <- cleaned_data[trainIndex, ]
-validation_data <- cleaned_data[-trainIndex, ]
-```   
-
-
 #### Check missing values
+
 ```{r check_missing_values, message=FALSE}
 
-missing_values_count <- sum(is.na(traindata))
+missing_values_count <- sum(is.na(cleaned_data))
 
 ```
+
 We have `r missing_values_count` missing values.
 
 #### Check near zero values
+
 ```{r near_zero_values, message=FALSE}
-nzv_vars <- nearZeroVar(traindata, saveMetrics = TRUE)
+nzv_vars <- nearZeroVar(cleaned_data, saveMetrics = TRUE)
 count_nzv <- sum(nzv_vars$nzv == TRUE)
 
 ```
+
 We have `r count_nzv` near zero values.
 
 #### Remove Highly Correlated Features
+
 Highly correlated features can lead to redundancy.
+
 ```{r remove_correlated, message=FALSE}
 
-cor_matrix <- cor(traindata %>% select(-classe))  # Remove target variable
+cor_matrix <- cor(cleaned_data %>% select(-classe))  # Remove target variable
 high_cor <- findCorrelation(cor_matrix, cutoff = 0.9)  # Identify high-correlation features
 # traindata <- traindata[, -high_cor]
 
@@ -156,17 +156,28 @@ cor_matrix[abs(cor_matrix) < 0.6] <- NA  # Remove correlations < 0.5
 cor_matrix[is.na(cor_matrix)] <- 0  # Replace NA with 0
 
 corrplot(cor_matrix, method = "circle", type = "upper", 
-         tl.cex = 0.7, tl.col = "black", 
+         tl.cex = 0.5, tl.col = "black", 
          addCoef.col = NULL)  
 
-traindata <- traindata[, -high_cor]
+cleaned_data <- cleaned_data[, -high_cor]
 
 ```
-We have `r length(names(traindata))` columns left.
+
+We have `r length(names(cleaned_data))` columns left.
+
+## Split into Training and Validation sets
+
+```{r splitting}
+trainIndex <- createDataPartition(cleaned_data$classe, p = 0.7, list = FALSE)
+traindata <- cleaned_data[trainIndex, ]
+validation_data <- cleaned_data[-trainIndex, ]
+```
 
 #### Parallel processing & Caching
+
 Some processes are really time consuming, so let's prepare parallel processing
-````{r parallel_functions}
+
+```{r parallel_functions}
 # Corrected global cluster variable
 parallelCluster <- NULL
 
@@ -200,12 +211,13 @@ loadObjects <- function(fileName) {
     load(fileName, envir = .GlobalEnv)
   }
 }
-````
+```
 
 #### Train Multiple Base Models
+
 Define a train_control object with cross-validation and set up your base models.
 
-````{r train_models}
+```{r train_models}
 MODEL_LIST_FILE <- "model_list"
 loadObjects(MODEL_LIST_FILE)
 if (!exists("model_list") || is.null(model_list)) {
@@ -232,17 +244,30 @@ if (!exists("model_list") || is.null(model_list)) {
   save(model_list, execution_time, file = paste0(MODEL_LIST_FILE,".RData"))
 } 
 print(paste("Elapsed time:", round((execution_time["elapsed"] / 60), 2), "minutes"))
-````
-Explanation of the models:
+```
 
-- rf: Random Forest (good for non-linear data)
-- gbm: Gradient Boosting Machine (great for medium datasets)
-- xgbTree: XGBoost (optimized GBM)
-- lm: Linear Regression (baseline model)
+### Models selection:
+
+#### **Diversity:**
+
+-   **`ranger`** captures non-linear relationships well with randomness.
+-   **`glmnet`** covers linear relationships effectively and handles regularization.
+-   **`xgbTree`** boosts weak learners by focusing on correcting previous mistakes.
+
+#### **Bias-Variance Tradeoff:**
+
+-   **`ranger`** and **`xgbTree`** are low-bias, high-variance models (good for capturing complexity).
+-   **`glmnet`** is a high-bias, low-variance model (good for simplicity and regularization).
+
+#### **Complementary Nature:**
+
+-   If the dataset has both linear and non-linear relationships, combining **`glmnet`** with tree-based models improves overall performance.
 
 ### Building the Stacked Model
-Combine the base models using a meta-model (e.g., glm):
-````{r}
+
+Combine the base models using a meta-model (e.g., xgbTree):
+
+```{r stacked_model}
 STACK_MODEL_FILE <- "stacked_model"
 loadObjects(STACK_MODEL_FILE)
 if (!exists("stacked_model") || is.null(stacked_model)) {
@@ -269,5 +294,63 @@ if (!exists("stacked_model") || is.null(stacked_model)) {
   save(stacked_model, execution_time, file = paste0(STACK_MODEL_FILE,".RData"))
 } 
 print(paste("Elapsed time:", round((execution_time["elapsed"] / 60), 2), "minutes"))
-````
+```
+
+```{r  Performance of the stacked model}
+# Performance of the stacked model
+plot(stacked_model)
+
+# Extract the best performance metrics from the stacked_model model
+best_results <- stacked_model$ens_model$results[
+  which.max(stacked_model$ens_model$results$Accuracy), 
+]
+
+# Extract accuracy and kappa values
+best_accuracy <- round(best_results$Accuracy * 100, 2)  # Convert to percentage
+best_kappa <- round(best_results$Kappa, 4)
+
+```
+
+Excellent Performance: The model achieved high accuracy `r sprintf("%.2f%%", best_accuracy)` and Kappa score `r sprintf("%.4f", best_kappa)`, indicating strong predictive ability with balanced classification.
+
+## Validate Model
+
+```{r Validate_Model}
+# Make predictions on validation data
+validation_predictions <- predict(stacked_model, newdata = validation_data)
+# Convert probabilities to predicted classes
+predicted_classes <- factor(
+  colnames(validation_predictions)[max.col(validation_predictions, ties.method = "first")],
+  levels = levels(validation_data$classe)
+)
+# Generate confusion matrix for validation data
+conf_matrix <- confusionMatrix(predicted_classes, validation_data$classe)
+
+
+# Extract metrics for inline display
+accuracy <- conf_matrix$overall['Accuracy'] 
+ci_lower <- conf_matrix$overall['AccuracyLower'] 
+ci_upper <- conf_matrix$overall['AccuracyUpper'] 
+p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
+```
+
+## Evaluation of the Confusion Matrix
+
+### Overall Performance
+
+-   **Accuracy**: `r sprintf("%.4f (%.2f%%)", accuracy, accuracy * 100)`
+    -   The proportion of correctly classified instances.
+    -   A high accuracy suggests the model performs exceptionally well.
+-   **95% Confidence Interval**: `r sprintf("(%.4f, %.4f)", ci_lower, ci_upper)`
+    -   Indicates the stability and reliability of the accuracy estimate.
+    -   The narrow confidence interval confirms consistent model performance.
+-   **P-Value** : `r p_value`
+    -   A very low p-value indicates that the model predictions are statistically significant and outperform random guessing.
+-   **Sensitivity** : `r round(mean(conf_matrix$byClass[, "Sensitivity"]), 4)`
+    -   Ability to correctly identify positive instances
+-   **Specificity** : `r round(mean(conf_matrix$byClass[, "Specificity"]), 4)`
+    -   Ability to correctly identify negative instances
+
+
+------------------------------------------------------------------------
 
