@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Executive Summary
 
-Based on a dataset provide by HAR <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har> we will try to train a predictive model to predict what mistake was comitted during exercise.
+Based on a dataset provide by HAR <http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har> we will try to train a predictive model to predict what type of exercise is performed based on data collected from wearable sensors. 
 
 We’ll take the following steps:
 
@@ -332,6 +332,8 @@ conf_matrix <- confusionMatrix(predicted_classes, validation_data$classe)
 
 # Extract metrics for inline display
 accuracy <- conf_matrix$overall['Accuracy'] 
+# Calculate out-of-sample error
+oos_error <- 1 - accuracy
 ci_lower <- conf_matrix$overall['AccuracyLower'] 
 ci_upper <- conf_matrix$overall['AccuracyUpper'] 
 p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
@@ -353,6 +355,11 @@ p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
     -   Ability to correctly identify positive instances
 -   **Specificity** : `r round(mean(conf_matrix$byClass[, "Specificity"]), 4)`
     -   Ability to correctly identify negative instances
+
+#### Out-of-Sample Error Estimation
+It measures the model's performance on unseen data, providing an indication of how well the model will generalize beyond the training set. A low out-of-sample error **`r sprintf("%.4f (%.2f%%)", oos_error, oos_error * 100)`** suggests that the model is not overfitting and is likely to perform well on new data.
+
+In this analysis, we use **cross-validation** combined with a confusion matrix to estimate **the out-of-sample error**. 
 
 
 ------------------------------------------------------------------------

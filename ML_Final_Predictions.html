@@ -359,8 +359,8 @@ Exercises Dataset</h1>
 <div id="executive-summary" class="section level2">
 <h2>Executive Summary</h2>
 <p>Based on a dataset provide by HAR <a href="http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har" class="uri">http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har</a>
-we will try to train a predictive model to predict what mistake was
-comitted during exercise.</p>
+we will try to train a predictive model to predict what type of exercise
+is performed based on data collected from wearable sensors.</p>
 <p>We’ll take the following steps:</p>
 <ul>
 <li>Process the data, for use of this project</li>
@@ -626,6 +626,8 @@ conf_matrix &lt;- confusionMatrix(predicted_classes, validation_data$classe)
 
 # Extract metrics for inline display
 accuracy &lt;- conf_matrix$overall[&#39;Accuracy&#39;] 
+# Calculate out-of-sample error
+oos_error &lt;- 1 - accuracy
 ci_lower &lt;- conf_matrix$overall[&#39;AccuracyLower&#39;] 
 ci_upper &lt;- conf_matrix$overall[&#39;AccuracyUpper&#39;] 
 p_value &lt;- format.pval(conf_matrix$overall[&#39;AccuracyPValue&#39;], digits = 4)</code></pre>
@@ -661,6 +663,17 @@ statistically significant and outperform random guessing.</li>
 <li>Ability to correctly identify negative instances</li>
 </ul></li>
 </ul>
+</div>
+<div id="out-of-sample-error-estimation" class="section level4">
+<h4>Out-of-Sample Error Estimation</h4>
+<p>It measures the model’s performance on unseen data, providing an
+indication of how well the model will generalize beyond the training
+set. A low out-of-sample error <strong>0.0034 (0.34%)</strong> suggests
+that the model is not overfitting and is likely to perform well on new
+data.</p>
+<p>In this analysis, we use <strong>cross-validation</strong> combined
+with a confusion matrix to estimate <strong>the out-of-sample
+error</strong>.</p>
 <hr />
 </div>
 </div>
