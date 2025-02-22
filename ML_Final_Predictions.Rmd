@@ -66,6 +66,7 @@ library(xgboost)
 library(gbm)
 library(ranger)
 library(glmnet)
+library(knitr)
 
 set.seed(123)  # Ensure reproducibility
 ```
@@ -173,7 +174,7 @@ traindata <- cleaned_data[trainIndex, ]
 validation_data <- cleaned_data[-trainIndex, ]
 ```
 
-#### Parallel processing & Caching
+### Parallel processing & Caching
 
 Some processes are really time consuming, so let's prepare parallel processing
 
@@ -213,9 +214,27 @@ loadObjects <- function(fileName) {
 }
 ```
 
-#### Train Multiple Base Models
+### Train Multiple Base Models
 
 Define a train_control object with cross-validation and set up your base models.
+
+#### Models selection:
+
+##### **Diversity:**
+
+-   **`ranger`** captures non-linear relationships well with randomness.
+-   **`glmnet`** covers linear relationships effectively and handles regularization.
+-   **`xgbTree`** boosts weak learners by focusing on correcting previous mistakes.
+
+##### **Bias-Variance Tradeoff:**
+
+-   **`ranger`** and **`xgbTree`** are low-bias, high-variance models (good for capturing complexity).
+-   **`glmnet`** is a high-bias, low-variance model (good for simplicity and regularization).
+
+##### **Complementary Nature:**
+
+-   If the dataset has both linear and non-linear relationships, combining **`glmnet`** with tree-based models improves overall performance.
+
 
 ```{r train_models}
 MODEL_LIST_FILE <- "model_list"
@@ -246,26 +265,10 @@ if (!exists("model_list") || is.null(model_list)) {
 print(paste("Elapsed time:", round((execution_time["elapsed"] / 60), 2), "minutes"))
 ```
 
-### Models selection:
-
-#### **Diversity:**
-
--   **`ranger`** captures non-linear relationships well with randomness.
--   **`glmnet`** covers linear relationships effectively and handles regularization.
--   **`xgbTree`** boosts weak learners by focusing on correcting previous mistakes.
-
-#### **Bias-Variance Tradeoff:**
-
--   **`ranger`** and **`xgbTree`** are low-bias, high-variance models (good for capturing complexity).
--   **`glmnet`** is a high-bias, low-variance model (good for simplicity and regularization).
-
-#### **Complementary Nature:**
-
--   If the dataset has both linear and non-linear relationships, combining **`glmnet`** with tree-based models improves overall performance.
-
 ### Building the Stacked Model
 
 Combine the base models using a meta-model (e.g., xgbTree):
+
 
 ```{r stacked_model}
 STACK_MODEL_FILE <- "stacked_model"
@@ -311,9 +314,9 @@ best_kappa <- round(best_results$Kappa, 4)
 
 ```
 
-Excellent Performance: The model achieved high accuracy `r sprintf("%.2f%%", best_accuracy)` and Kappa score `r sprintf("%.4f", best_kappa)`, indicating strong predictive ability with balanced classification.
+Excellent Performance: The model achieved high accuracy **`r sprintf("%.2f%%", best_accuracy)`** and Kappa score **`r sprintf("%.4f", best_kappa)`**, indicating strong predictive ability with balanced classification.
 
-## Validate Model
+### Validate Model
 
 ```{r Validate_Model}
 # Make predictions on validation data
@@ -334,9 +337,9 @@ ci_upper <- conf_matrix$overall['AccuracyUpper']
 p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
 ```
 
-## Evaluation of the Confusion Matrix
+### Evaluation of the Confusion Matrix
 
-### Overall Performance
+#### Overall Performance
 
 -   **Accuracy**: `r sprintf("%.4f (%.2f%%)", accuracy, accuracy * 100)`
     -   The proportion of correctly classified instances.
@@ -353,40 +356,21 @@ p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
 
 
 ------------------------------------------------------------------------
-## Make predictions
+### Make predictions
 
-````{r}
+````{r Make predictions}
 # Load pml-testing.csv 
 pml_testing <- read.csv("pml-testing.csv")
 
 # Make predictions using the trained model
 test_predictions <- predict(stacked_model, pml_testing)
-````
+vector_predicted <- colnames(test_predictions)[max.col(test_predictions, ties.method = "first")]
 
-````{r, echo=FALSE}
-# Create a  dataframe
-res_tbl <- data.frame(problem_id = pml_testing$problem_id, prediction = test_predictions)
-
-# Convert to wide format (two rows: problem_id & prediction)
-res_tbl_pivoted <- rbind(
-  c("problem_id", as.character(res_tbl$problem_id)),
-  c("prediction", as.character(res_tbl$prediction))
-)
-
-# Convert to data frame
-res_tbl_pivoted <- as.data.frame(res_tbl_pivoted, stringsAsFactors = FALSE)
-
-# Remove automatic row names
-rownames(res_tbl_pivoted) <- NULL
-colnames(res_tbl_pivoted) <- c("problem_id", as.character(1:20))
-# Remove the first row (problem_id row)
-res_tbl_pivoted <- res_tbl_pivoted[-1, ]
-
-# **Remove row names to avoid showing index**
-rownames(res_tbl_pivoted) <- NULL
-
-# Apply formattable
-formattable(res_tbl_pivoted)
-
+# Display predictions nicely using kable
+kable(rbind(
+  1:length(vector_predicted),
+  "Predicted Classe" = vector_predicted
+))
 
 ````
+
