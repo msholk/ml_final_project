@@ -353,4 +353,40 @@ p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
 
 
 ------------------------------------------------------------------------
+## Make predictions
 
+````{r}
+# Load pml-testing.csv 
+pml_testing <- read.csv("pml-testing.csv")
+
+# Make predictions using the trained model
+test_predictions <- predict(stacked_model, pml_testing)
+````
+
+````{r, echo=FALSE}
+# Create a  dataframe
+res_tbl <- data.frame(problem_id = pml_testing$problem_id, prediction = test_predictions)
+
+# Convert to wide format (two rows: problem_id & prediction)
+res_tbl_pivoted <- rbind(
+  c("problem_id", as.character(res_tbl$problem_id)),
+  c("prediction", as.character(res_tbl$prediction))
+)
+
+# Convert to data frame
+res_tbl_pivoted <- as.data.frame(res_tbl_pivoted, stringsAsFactors = FALSE)
+
+# Remove automatic row names
+rownames(res_tbl_pivoted) <- NULL
+colnames(res_tbl_pivoted) <- c("problem_id", as.character(1:20))
+# Remove the first row (problem_id row)
+res_tbl_pivoted <- res_tbl_pivoted[-1, ]
+
+# **Remove row names to avoid showing index**
+rownames(res_tbl_pivoted) <- NULL
+
+# Apply formattable
+formattable(res_tbl_pivoted)
+
+
+````
