@@ -3,7 +3,7 @@ You can view the complete analysis and results [here](https://msholk.github.io/m
 
 ### Data Source:
 
-I am e using the Weight Lifting Exercises Dataset from HAR (Human Activity Recognition) data, which contains sensor data from wearable devices attached to subjects performing exercises.
+I am using the Weight Lifting Exercises Dataset from HAR (Human Activity Recognition) data, which contains sensor data from wearable devices attached to subjects performing exercises.
 
 ### Prediction Goal:
 
@@ -30,7 +30,18 @@ To enhance predictive performance, I applied **model stacking** using **`xgbTree
 ### Model Evaluation:
 
 I have evaluated the model's performance using a confusion matrix and calculated key metrics such as accuracy.
-The model also estimates the **out-of-sample error** using cross-validation.
+
+### Out-of-Sample Error Estimation
+
+The **out-of-sample error** estimates how well the model is expected to perform on new, unseen data. A low out-of-sample error indicates that the model generalizes well and is not overfitting the training data.
+
+Given the complexity of the sensor data and the nature of the classification task, we expect the out-of-sample error to be relatively low (ideally below 5%) for a well-tuned model.
+
+The received value  **0.34%** suggests that the model is not overfitting and is likely to perform well on new data.
+
+In this analysis, we use **cross-validation** combined with a confusion matrix to estimate **the out-of-sample error**. 
+
+
 
 ### Parallel Processing:
 

@@ -356,8 +356,13 @@ p_value <- format.pval(conf_matrix$overall['AccuracyPValue'], digits = 4)
 -   **Specificity** : `r round(mean(conf_matrix$byClass[, "Specificity"]), 4)`
     -   Ability to correctly identify negative instances
 
-#### Out-of-Sample Error Estimation
-It measures the model's performance on unseen data, providing an indication of how well the model will generalize beyond the training set. A low out-of-sample error **`r sprintf("%.4f (%.2f%%)", oos_error, oos_error * 100)`** suggests that the model is not overfitting and is likely to perform well on new data.
+### Out-of-Sample Error Estimation
+
+The **out-of-sample error** estimates how well the model is expected to perform on new, unseen data. A low out-of-sample error indicates that the model generalizes well and is not overfitting the training data.
+
+Given the complexity of the sensor data and the nature of the classification task, we expect the out-of-sample error to be relatively low (ideally below 5%) for a well-tuned model.
+
+The received value  **`r sprintf("%.4f (%.2f%%)", oos_error, oos_error * 100)`** suggests that the model is not overfitting and is likely to perform well on new data.
 
 In this analysis, we use **cross-validation** combined with a confusion matrix to estimate **the out-of-sample error**. 
 

@@ -664,18 +664,22 @@ statistically significant and outperform random guessing.</li>
 </ul></li>
 </ul>
 </div>
-<div id="out-of-sample-error-estimation" class="section level4">
-<h4>Out-of-Sample Error Estimation</h4>
-<p>It measures the model’s performance on unseen data, providing an
-indication of how well the model will generalize beyond the training
-set. A low out-of-sample error <strong>0.0034 (0.34%)</strong> suggests
-that the model is not overfitting and is likely to perform well on new
-data.</p>
+</div>
+<div id="out-of-sample-error-estimation" class="section level3">
+<h3>Out-of-Sample Error Estimation</h3>
+<p>The <strong>out-of-sample error</strong> estimates how well the model
+is expected to perform on new, unseen data. A low out-of-sample error
+indicates that the model generalizes well and is not overfitting the
+training data.</p>
+<p>Given the complexity of the sensor data and the nature of the
+classification task, we expect the out-of-sample error to be relatively
+low (ideally below 5%) for a well-tuned model.</p>
+<p>The received value <strong>0.0034 (0.34%)</strong> suggests that the
+model is not overfitting and is likely to perform well on new data.</p>
 <p>In this analysis, we use <strong>cross-validation</strong> combined
 with a confusion matrix to estimate <strong>the out-of-sample
 error</strong>.</p>
 <hr />
-</div>
 </div>
 <div id="make-predictions" class="section level3">
 <h3>Make predictions</h3>
