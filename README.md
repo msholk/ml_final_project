@@ -17,8 +17,12 @@ We clean the dataset by:
 
 ### Machine Learning Algorithm:
 
-We employed a Random Forest model, which is a machine learning algorithm for classification tasks.
-We used cross-validation (trainControl) to train the model robustly and prevent overfitting.
+I trained multiple machine learning models to predict activity type from sensor data:
+ - Random Forest (ranger)
+ - Regularized Generalized Linear Model (glmnet)
+ - Extreme Gradient Boosting (xgbTree)
+ - 
+To enhance predictive performance, I applied model stacking using xgbTree as the meta-learner, which combines the predictions from the base models to improve overall accuracy.
 
 ### Model Evaluation:
 
