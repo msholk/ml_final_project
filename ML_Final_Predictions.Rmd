@@ -18,7 +18,7 @@ We’ll take the following steps:
 -   Process the data, for use of this project
 -   Explore the data, try to reduce features
 -   Train model
--   Predict exercise error on test dataset
+-   Predict exercise type on test dataset
 
 ------------------------------------------------------------------------
 
@@ -267,7 +267,7 @@ print(paste("Elapsed time:", round((execution_time["elapsed"] / 60), 2), "minute
 
 ### Building the Stacked Model
 
-Combine the base models using a meta-model (e.g., xgbTree):
+Combine the base models using a meta-model (xgbTree):
 
 
 ```{r stacked_model}
@@ -386,3 +386,4 @@ kable(rbind(
 
 ````
 
+All predcited values were confirmed to be correct 100%.
