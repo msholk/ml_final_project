@@ -2,7 +2,7 @@
 title: "Predictions using the Weight Lifting Exercises Dataset"
 autor: "M.Welt"
 output: html_document
-date: "2025-02-19"
+date: "2025-02-23"
 ---
 
 ```{r setup, include=FALSE}
