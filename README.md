@@ -21,7 +21,7 @@ I trained multiple machine learning models to predict activity type from sensor 
  - Random Forest (ranger)
  - Regularized Generalized Linear Model (glmnet)
  - Extreme Gradient Boosting (xgbTree)
- - 
+   
 To enhance predictive performance, I applied model stacking using xgbTree as the meta-learner, which combines the predictions from the base models to improve overall accuracy.
 
 ### Model Evaluation:
