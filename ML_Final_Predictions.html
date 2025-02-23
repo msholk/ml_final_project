@@ -366,7 +366,7 @@ is performed based on data collected from wearable sensors.</p>
 <li>Process the data, for use of this project</li>
 <li>Explore the data, try to reduce features</li>
 <li>Train model</li>
-<li>Predict exercise error on test dataset</li>
+<li>Predict exercise type on test dataset</li>
 </ul>
 <hr />
 <pre class="r"><code>library(caret)    # For machine learning workflow
@@ -568,7 +568,7 @@ print(paste(&quot;Elapsed time:&quot;, round((execution_time[&quot;elapsed&quot;
 </div>
 <div id="building-the-stacked-model" class="section level3">
 <h3>Building the Stacked Model</h3>
-<p>Combine the base models using a meta-model (e.g., xgbTree):</p>
+<p>Combine the base models using a meta-model (xgbTree):</p>
 <pre class="r"><code>STACK_MODEL_FILE &lt;- &quot;stacked_model&quot;
 loadObjects(STACK_MODEL_FILE)
 if (!exists(&quot;stacked_model&quot;) || is.null(stacked_model)) {
@@ -768,6 +768,7 @@ kable(rbind(
 </tr>
 </tbody>
 </table>
+<p>All predcited values were confirmed to be correct 100%.</p>
 </div>
 </div>
 
