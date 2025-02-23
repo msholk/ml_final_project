@@ -1,5 +1,5 @@
 ## Build a machine learning algorithm to predict activity quality from activity monitors. 
-You can view the complete analysis and results [here](https://msholk.github.io/ml_final_project/ML_Final_Predictions.html).
+You can view the complete analysis and results [here](https://msholk.github.io/ml_final_project/ML_Final_Predictions01.html).
 
 ### Data Source:
 
