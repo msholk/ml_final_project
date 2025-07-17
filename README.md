@@ -1,6 +1,6 @@
 ## Build a machine learning algorithm to predict activity quality from activity monitors. 
 You can view the complete analysis and results [here](https://msholk.github.io/ml_final_project/ML_Final_Predictions01.html).
-
+suggested test chane
 ### Data Source:
 
 I am using the Weight Lifting Exercises Dataset from HAR (Human Activity Recognition) data, which contains sensor data from wearable devices attached to subjects performing exercises.
